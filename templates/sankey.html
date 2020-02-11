@@ -31,6 +31,7 @@ input {
  
 .node text {
   pointer-events: none;
+  font-size : 12px;
   text-shadow: 0 1px 0 #fff;
 }
  
@@ -108,7 +109,7 @@ input {
 	// @todo: Sankey 크기조정
 	var margin = {top: 10, right: 10, bottom: 10, left: 10},
 		width = 1200 - margin.left - margin.right,
-		height = 740 - margin.top - margin.bottom;
+		height = 300 - margin.top - margin.bottom;  //@eunmi : height 줄임
 	 
 	var formatNumber = d3.format(",.0f"),    // zero decimal places
 		format = function(d) { return formatNumber(d) + " " + units; },
@@ -117,8 +118,8 @@ input {
 	// Set the sankey diagram properties
 	// @todo: Sankey 설정 (노드크기, 세로간격, 전체 다이어그램 크기)
 	var sankey = d3.sankey()
-		.nodeWidth(100)
-		.nodePadding(0)
+		.nodeWidth(30)
+		.nodePadding(10)
 		.size([width, height]);
 	 
 	var path = sankey.link();
@@ -143,10 +144,10 @@ input {
 		// load the data
 		// @todo: JSON 데이터 로딩
 		d3.json("/json_data/" + product, function(error, graph) {
-		//d3.json("energy.json", function(error, graph) {
 		 
 			var nodeMap = {};
-			graph.nodes.forEach(function(x) { nodeMap[x.name] = x; });
+			
+			graph.nodes.forEach(function(x) { nodeMap[x.name] = x; });			
 			graph.links = graph.links.map(function(x) {
 			  return {
 				source: nodeMap[x.source],
@@ -154,12 +155,12 @@ input {
 				value: x.value
 			  };
 			});
-		 
+			
 		  sankey
 			  .nodes(graph.nodes)
 			  .links(graph.links)
 			  .layout(32);
-		 
+		
 		// add in the links
 		  var link = svg.append("g").selectAll(".link")
 			  .data(graph.links)
@@ -171,7 +172,7 @@ input {
 			// @todo: 링크 클릭시 이벤트 발생(d.value, d.source.name, d.target.name)
 			.on("click",function(d){
 				if (d3.event.defaultPrevented) return;
-				alert("clicked!"+d.source.name);
+				alert("clicked!"+d.source.name + ", " + d.target.name);
 			});
 		 
 		// add the link titles
@@ -190,7 +191,7 @@ input {
 			// @todo: 노드 클릭시 이벤트 발생(d.value, d.name)
 			.on("click",function(d){
 				if (d3.event.defaultPrevented) return;
-				alert("clicked!"+d.name);
+				alert("clicked! Node : "+d.name);
 			})
 			.call(d3.behavior.drag()
 			  .origin(function(d) { return d; })
@@ -203,7 +204,9 @@ input {
 			  .attr("height", function(d) { return d.dy; })
 			  .attr("width", sankey.nodeWidth())
 			  .style("fill", function(d) { 
-				  return d.color = color(d.name.replace(/ .*/, "")); })
+				  //return d.color = color(d.name.replace(/ .*/, "")); //@기존코드
+				  return d.color; //@eunmi : 노드 색깔 가져오기 (테이블 열)
+				})
 			  .style("stroke", function(d) { 
 				  return d3.rgb(d.color).darker(2); })
 			.append("title")
@@ -214,7 +217,7 @@ input {
 		//@todo: 노드명칭의 x, y 위치 (중간, 상단)
 		  node.append("text")
 			  //.attr("x", -6)
-			  .attr("x", 6)
+			  .attr("x", function(d) { return d.y == 0 ? -6 : 6 + sankey.nodeWidth() ; }) //@eunmi : 텍스트박스 위치 수정
 			  .attr("y", function(d) { return d.y == 0 ? -10 : d.dy / 2; })
 			  //.attr("y", function(d) { return d.dy / 2; })
 			  .attr("dy", ".35em")
@@ -223,8 +226,8 @@ input {
 			  .attr("transform", null)
 			  .text(function(d) { return d.name; })
 			.filter(function(d) { return d.x < width / 2; })
-			  //.attr("x", 6 + sankey.nodeWidth())
-			  .attr("x", 6)
+			  //.attr("x", 6 + sankey.nodeWidth())   //@eunmi : 주석처리 
+			  //.attr("x", 6)
 			  .attr("text-anchor", "start");
 		 
 		// the function for moving the nodes

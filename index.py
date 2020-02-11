@@ -7,6 +7,7 @@ Created on Wed Feb  5 15:48:57 2020
 """
 
 import pandas as pd
+import pymssql
 import json
 from flask import Flask, render_template
 
@@ -25,13 +26,41 @@ def main():
 
     @app.route("/json_data/<data>")
     def json_data(data):
-        
         sankey = None
         
-        with open("D:/KBarCode/static/" + data + ".json") as f:
-            sankey = json.load(f)
+        # @eunmi : 바코드 로그 가져오기 (.json)
+        if (data=='barcode'):
+            # 1. DB 주소 정보
+            server = '10.224.1.86'
+            # database = 'DNA'
+            username = 'dna_svc'
+            password = 'dna@Kefic0'
         
-        return json.dumps(sankey, indent=4)
+            # 2. DB 연결 및 Table 데이터 가져오기
+            conn = pymssql.connect(server=server, user=username, password=password)
+            stmt = "select * from df_MAT"
+            df_MAT = pd.read_sql(stmt, conn)
+            stmt = "select * from KMP_nodeInfo"
+            df_nodes = pd.read_sql(stmt, conn)
+            
+            # 3. 데이터 가공 (df_MAT)
+            links = pd.pivot_table(df_MAT, index=['source', 'target'], values=['value'], aggfunc=len)
+            links.sort_values(by='value', ascending=False, inplace=True)
+            links.reset_index(level=[0, 1], inplace=True)
+        
+            # 4. Json 문자열 변환
+            sankey = {}
+            sankey['nodes'] = json.loads(df_nodes.to_json(orient='records'))
+            sankey['links'] = json.loads(links.to_json(orient='records'))
+            sankey = json.dumps(sankey)
+        else:        
+            #@eunmi : 로컬 경로
+            with open("D:/2. 분석 업무/BI_멕시코 바코드 분석/KBarCode-master/static/" + data + ".json") as f: 
+                # @eunmi : Json 문자열 변환
+                sankey = f.read()
+                sankey = sankey.replace("\n", "").replace(" ", "")
+        
+        return sankey
     
     # 웹서버 구동
     app.run(host='127.0.0.1',port=8080,debug=True)
